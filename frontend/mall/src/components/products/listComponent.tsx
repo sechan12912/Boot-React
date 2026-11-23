@@ -1,9 +1,29 @@
+import { useQueryClient } from "@tanstack/react-query";
 import useCustomMove from "../../hooks/useCustomMove";
 import PageComponent from "../common/pageComponent";
 
 function ListComponent({serverData}: {serverData:PageResponseDTO<ProductDTO>}) {
 
   const {moveToRead, moveToList} = useCustomMove()
+
+  const query = useQueryClient()
+
+  const {page,size} = useCustomMove()
+
+  const moveCheckPage = (pageParam:PageParam) => {
+
+    console.log(pageParam.page, page, pageParam.page === page)
+
+    if(pageParam.page === page) {
+      if(!confirm("다시 페이지를 호출하시겠습니까?")){
+        return
+      }
+    }
+
+    query.invalidateQueries({queryKey: ['products/list', page, size]})
+
+    moveToList(pageParam)
+  }
 
   return (
     <div className="border-2 border-blue-100 mt-10 mr-2 ml-2 text-2xl">
@@ -40,7 +60,10 @@ function ListComponent({serverData}: {serverData:PageResponseDTO<ProductDTO>}) {
         )}
       </div>
 
-      <PageComponent serverData={serverData} movePage={moveToList}></PageComponent>
+      <PageComponent
+        serverData={serverData}
+        movePage={moveCheckPage}>
+      </PageComponent>
 
     </div>
   );

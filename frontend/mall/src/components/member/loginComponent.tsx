@@ -29,7 +29,7 @@ function LoginComponent() {
           callbackFn={closeModal} />
       }
 
-      {loginStatus === 'rejected' && <div className="bg-red-300">로그인실패</div>}
+      {loginStatus === 'error' && <div className="bg-red-300">로그인실패</div>}
 
       <div className="flex justify-center">
         <div className="text-4xl m-4 p-4 font-extrabold text-blue-500">Login Component</div>

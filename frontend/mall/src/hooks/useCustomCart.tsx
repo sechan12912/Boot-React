@@ -1,21 +1,21 @@
-import { useDispatch, useSelector } from "react-redux"
-import { type AppDispatch, type RootState } from "../store"
 import { useEffect } from "react"
-import useCustomLogin from "./useCustomLogin"
-import { getCartItemsAsync, postChangeCartAsync } from "../slices/cartSlice"
+import useZustandMember from "../zstore/useZustandMember"
+import useZustandCart from "../zstore/useZustandCart"
 
 function useCustomCart() {
 
-  const {loginState, loginStatus} = useCustomLogin()
+  const {member, status:memberStatus} = useZustandMember ()
 
-  const cartItems = useSelector( (state:RootState) => state.cartSlice)
+  const loginState = member
 
-  const dispatch = useDispatch<AppDispatch>()
+  const loginStatus = memberStatus
+
+  const {items , requestChangeCart , getItems, status} = useZustandCart()
 
   useEffect(() => {
 
     if(loginStatus) {
-      dispatch(getCartItemsAsync())
+      getItems()
     }
 
   },[loginStatus])
@@ -27,7 +27,7 @@ function useCustomCart() {
     let qty = 1
 
     if(cino){
-      const targetArr = cartItems.items.filter(item => item.cino === cino)
+      const targetArr = items.filter(item => item.cino === cino)
 
       if(targetArr.length > 0) {
         qty = targetArr[0].qty + amount
@@ -38,10 +38,10 @@ function useCustomCart() {
 
     console.log(requestItem)
 
-    dispatch(postChangeCartAsync(requestItem))
+    requestChangeCart(requestItem)
   }
 
-  return {loginState, loginStatus, cartItems, changeCart}
+  return {loginState, loginStatus, cartItems: {items: items, status: status} , changeCart}
 }
 
 export default useCustomCart

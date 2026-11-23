@@ -1,36 +1,8 @@
-import { type MouseEvent, useActionState, useState } from "react";
+import { type MouseEvent, useState } from "react";
 import useCustomMove from "../../hooks/useCustomMove";
-import jwtAxios from "../../util/jwtUtil";
-import PendingModal from "../common/pendingModal";
 import ResultModal from "../common/resultModal";
-
-interface ProductTaskResult {
-  actionType: string,
-  result: string,
-  error? : string
-}
-
-const initState: ProductTaskResult = {
-  actionType: 'modify',
-  result: ""
-}
-
-const modifyDeleteAsyncAction = async ( _state:ProductTaskResult, formData:FormData):
-  Promise<ProductTaskResult> => {
-
-  const pno = formData.get("pno")
-  const actionType = formData.get("actionType") as string
-
-  let res;
-
-  if(actionType ==='modify'){
-    res = await jwtAxios.put(`http://localhost:8080/api/products/${pno}`, formData )
-  }else if(actionType ==='delete') {
-    res = await jwtAxios.delete(`http://localhost:8080/api/products/${pno}` )
-  }
-
-  return { actionType: actionType, result: res?.data?.RESULT}
-}
+import jwtAxios from "../../util/jwtUtil";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 function ModifyComponent( {product}: {product:ProductDTO}) {
 
@@ -39,30 +11,71 @@ function ModifyComponent( {product}: {product:ProductDTO}) {
   const [images, setImages] = useState<string[]>([...product.uploadFileNames]);
 
   const deleteOldImages = (event: MouseEvent<HTMLButtonElement> , target: string) => {
+
     event.preventDefault()
     event.stopPropagation()
+
     setImages(prev => prev.filter(img => img !== target));
   };
 
-  const [state, action, isPending] = useActionState(modifyDeleteAsyncAction, initState)
+  const queryClient = useQueryClient()
+
+  const deleteMutaion = useMutation({
+    mutationFn: async () => {
+      const res = await jwtAxios.delete(`http://localhost:8080/api/products/${product.pno}`)
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries( {queryKey: ['product', String(product.pno) ]})
+      queryClient.invalidateQueries( {queryKey: ['products/list'], exact: false})
+    }
+  })
+
+  const modifyMutation = useMutation({
+    mutationFn: async (formData:FormData) => {
+      const header = {headers: {"Content-Type": "multipart/form-data"}}
+      const res = await jwtAxios.put(`http://localhost:8080/api/products/${product.pno}`, formData, header)
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries( {queryKey: ['product', String(product.pno) ]})
+      queryClient.invalidateQueries( {queryKey: ['products/list'], exact: false})
+    }
+  })
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+
+    const formData = new FormData(e.currentTarget)
+
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement
+    const actionType = submitter.value
+
+    console.log("actionType", actionType)
+
+    if(actionType === 'modify'){
+      modifyMutation.mutate(formData)
+    } else if(actionType === 'delete') {
+      deleteMutaion.mutate()
+    }
+  }
 
   return (
     <div className = "border-2 border-sky-200 mt-10 m-2 p-4 bg-white">
 
-      {isPending && <PendingModal/>}
-
-      {state.result
-        && <ResultModal title="처리완료" content="처리완료" callbackFn={() => {
-          if(state.actionType ==='modify'){
+      { (deleteMutaion.data || modifyMutation.data) && <ResultModal title="처리완료" content="처리완료"
+        callbackFn={() => {
+          console.log(deleteMutaion.data)
+          if(modifyMutation.data?.RESULT ==='SUCCESS'){
             moveToRead(product.pno)
           }
-          if(state.actionType === 'delete') {
+          if(deleteMutaion.data?.RESULT === 'SUCCESS') {
             moveToList()
           }
         }}
       />}
 
-      <form action={action} >
+      <form onSubmit={handleSubmit} >
         <div className="flex justify-center mt-10">
           <div className="relative mb-4 flex w-full flex-wrap items-stretch">
             <div className="w-1/5 p-6 text-right font-bold">PNO</div>

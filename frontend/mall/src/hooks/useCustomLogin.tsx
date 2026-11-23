@@ -1,19 +1,21 @@
-import { useDispatch, useSelector } from "react-redux"
-import { type AppDispatch, type RootState } from "../store"
-import { loginPostAsync, logout, save } from "../slices/loginSlice"
 import { Navigate, useNavigate } from "react-router"
 import { useEffect } from "react"
 import { getCookie } from "../util/cookieUtil"
+import useZustandMember from "../zstore/useZustandMember"
 
 const useCustomLogin = () => {
 
-  const dispatch = useDispatch<AppDispatch>()
+  const {member, status, login, logout, save} = useZustandMember()
 
-  const loginState = useSelector((state: RootState) => state.loginSlice)
+  const loginState = member
 
-  const loginStatus = loginState.status
+  const loginStatus = status
 
   const navigate = useNavigate()
+
+  const doLogin = async (email:string, pw:string) => {
+    login(email, pw)
+  }
 
   useEffect(() => {
 
@@ -24,18 +26,14 @@ const useCustomLogin = () => {
       console.log("member from cookie ")
       console.log(member)
 
-      if(member) {
-        dispatch(save(member))
+      if(member){
+        save(member)
       }
     }
   },[])
 
-  const doLogin = async (email:string, pw:string) => {
-    dispatch(loginPostAsync({ email, pw }))
-  }
-
   const doLogout = () => {
-    dispatch(logout(null))
+    logout()
   }
 
   const moveToLogin = () => {
